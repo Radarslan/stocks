@@ -1,0 +1,13 @@
+title Stocks
+
+Binance Listener<--Stocks Client:Get Client
+Binance Listener-->Stocks Client:Connect to server
+Stocks Client-->Stocks Server:Connect
+Stocks Server-->Stocks Client:Accept, Receive
+Binance Listener-->Binance:Connect
+Binance Listener<--Binance:Get symbol quotes
+Binance Listener->Stocks Client:Send data "ticks"
+Stocks Client->Stocks Server:Send data "ticks"
+Stocks Server->Redis:Save data "ticks" with timeout of 30 minutes
+Stocks API<-Redis:Read quotes
+Grafana<-Stocks API:Read quotes
