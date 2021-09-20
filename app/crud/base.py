@@ -1,4 +1,4 @@
-import pickle
+from time import time
 from typing import Any
 from typing import List
 from typing import Optional
@@ -15,7 +15,7 @@ async def get_all_keys(redis: Redis) -> Targets:
         list(
             set(
                 [
-                    key.decode(ENCODING_FORMAT)
+                    ":".join(key.decode(ENCODING_FORMAT).split(":")[:2])
                     async for key in redis.scan_iter(r"*:*", 100)
                 ]
             )
@@ -28,17 +28,23 @@ def get_all_sources(all_keys: List[str]) -> Targets:
 
 
 async def save_data_to_redis_list(
-    redis: Redis, source_type: str, key: str, data: Any
+        redis: Redis, source_type: str, key: str, data: Any
 ) -> None:
-    name = f"{source_type}:{key}"
-    await redis.rpush(name, pickle.dumps(data, protocol=5))
+    name = f"{source_type}:{key}:{time()}"
+    await redis.hset(name, mapping=data)
     await redis.expire(name, TIME_TO_LIVE_IN_SECONDS)
 
 
 async def read_data_from_redis_list(
-    redis: Redis, key: str
+        redis: Redis, name: str
 ) -> Optional[List[Any]]:
-    asset_quotes = await redis.lrange(key, 0, -1)
-    if asset_quotes:
-        return [pickle.loads(asset_quote) for asset_quote in asset_quotes]
-    return None
+    result = []
+    async for key_name in redis.scan_iter(f"{name}*", 100):
+        asset_quote = await redis.hgetall(key_name)
+        result.append(
+            {
+                key.decode(ENCODING_FORMAT): value.decode(ENCODING_FORMAT)
+                for key, value in asset_quote.items()
+            }
+        )
+    return result

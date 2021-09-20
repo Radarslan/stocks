@@ -11,7 +11,7 @@ from app.schemas.grafana.datapoints import Datapoint
 
 
 async def get_timeserie_datapoints(
-    redis: Redis, key: str
+        redis: Redis, key: str
 ) -> Optional[Datapoint]:
     if key.find(":") == -1:
         pass
@@ -40,7 +40,7 @@ async def get_table_rows(redis: Redis, target: str) -> Optional[Any]:
                         {"text": "Messages for 30 minutes", "type": "number"},
                         {
                             "text": "Average messages per second"
-                            "(last 5 minutes)",
+                                    "(last 5 minutes)",
                             "type": "number",
                         },
                     ],
@@ -56,20 +56,20 @@ async def get_table_rows(redis: Redis, target: str) -> Optional[Any]:
                 source = key.split(":")[0]
                 asset = key.split(":")[1]
                 messages_for_30_minutes = len(asset_quotes)
-                the_1st_timestamp = asset_quotes[-1].timestamp
+                the_1st_timestamp = int(asset_quotes[-1].get("timestamp", "0"))
                 number_of_messages = 0
                 five_minutes_in_milliseconds = 5 * 60 * 1000
                 for i in range(len(asset_quotes) - 1, -1, -1):
                     if (
-                        asset_quotes[i].timestamp - the_1st_timestamp
-                        >= five_minutes_in_milliseconds
+                            int(asset_quotes[i].get("timestamp", "0")) - the_1st_timestamp
+                            >= five_minutes_in_milliseconds
                     ):
                         break
                     else:
                         number_of_messages += 1
                 average_number_of_messages_per_second_last_5_minutes = (
-                    Decimal(number_of_messages)
-                    / Decimal(five_minutes_in_milliseconds)
+                        Decimal(number_of_messages)
+                        / Decimal(five_minutes_in_milliseconds)
                 )
                 result[source][0]["rows"].append(
                     [

@@ -1,20 +1,23 @@
 import asyncio
 import json
 import logging
-
 import websockets
 
 from app.core.business_logic_layer.messages import get_binance_messages
 from app.core.settings.settings import BINANCE_WEB_SOCKET_URL
-from app.core.sockets.stocks_client import (
-    get_client_sockets_for_all_in_configuration,
+from app.core.sockets.stocks_server import send_message
+from app.core.sockets.stocks_server import (
+    get_server_sockets_for_all_in_configuration
 )
-from app.core.sockets.stocks_client import send_message
 
 
 async def main():
     url = BINANCE_WEB_SOCKET_URL
-    client_sockets = get_client_sockets_for_all_in_configuration()
+    server_sockets = get_server_sockets_for_all_in_configuration()
+    client_sockets = {
+        source_type: server_sockets[source_type].accept()[0]
+        for source_type in server_sockets
+    }
     async with websockets.connect(url) as client:
         while True:
             try:
@@ -32,7 +35,8 @@ async def main():
                         binance_messages[source_type],
                     )
                     logging.info(
-                        f"sent all messages to {source_type} {client_sockets[source_type]}"
+                        f"sent all messages to {source_type} "
+                        f"{client_sockets[source_type]}"
                     )
                     # logging.info(f"{binance_messages[source_type]}")
                 # break

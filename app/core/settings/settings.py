@@ -5,7 +5,7 @@ import sys
 from decouple import config
 
 # general
-ENVIRONMENT: str = config("ENVIRONMENT", "docker")
+ENVIRONMENT: str = config("ENVIRONMENT", "localhost")
 
 API_VERSION: str = config("API_VERSION", "/api")
 PROJECT_NAME: str = config("PROJECT_NAME", "Stocks")
