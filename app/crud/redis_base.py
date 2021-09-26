@@ -1,4 +1,5 @@
-from time import time
+import pickle
+
 from typing import Any
 from typing import List
 from typing import Optional
@@ -6,7 +7,6 @@ from typing import Optional
 from aioredis import Redis
 
 from app.core.settings.settings import ENCODING_FORMAT
-from app.core.settings.settings import TIME_TO_LIVE_IN_SECONDS
 from app.schemas.grafana.queries import Targets
 
 
@@ -28,23 +28,16 @@ def get_all_sources(all_keys: List[str]) -> Targets:
 
 
 async def save_data_to_redis_list(
-        redis: Redis, source_type: str, key: str, data: Any
+    redis: Redis, source_type: str, key: str, data: Any
 ) -> None:
-    name = f"{source_type}:{key}:{time()}"
-    await redis.hset(name, mapping=data)
-    await redis.expire(name, TIME_TO_LIVE_IN_SECONDS)
+    name = f"{source_type}:{key}"
+    await redis.rpush(name, pickle.dumps(data, protocol=5))
 
 
 async def read_data_from_redis_list(
-        redis: Redis, name: str
+    redis: Redis, key: str
 ) -> Optional[List[Any]]:
-    result = []
-    async for key_name in redis.scan_iter(f"{name}*", 100):
-        asset_quote = await redis.hgetall(key_name)
-        result.append(
-            {
-                key.decode(ENCODING_FORMAT): value.decode(ENCODING_FORMAT)
-                for key, value in asset_quote.items()
-            }
-        )
-    return result
+    asset_quotes = await redis.lrange(key, 0, -1)
+    if asset_quotes:
+        return [pickle.loads(asset_quote) for asset_quote in asset_quotes]
+    return None

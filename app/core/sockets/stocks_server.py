@@ -73,5 +73,4 @@ def send_message(
                     f"client socket "
                     f" closing error: {e}"
                 )
-            del client_socket
-            break
+                raise Exception(e)

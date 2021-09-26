@@ -2,134 +2,82 @@ version: '3'
 
 services:
 
-  database:
-    image: "redis:latest"
-    command: "redis-server /usr/local/etc/redis/redis.conf"
+
+  stocks_binance:
+    image: "python:3.9"
+    command: bash -c "ls -la;
+      python3 -m pip install poetry
+      && poetry config virtualenvs.create false
+      && poetry config --list
+      && poetry install --no-interaction --no-ansi
+      && python3 app/core/sockets/binance_listener.py"
     ports:
-      - "5005:5005"
+      - "1234:1234"
+      - "4321:4321"
     networks:
       - stocks_network
     environment:
-      REDIS_REPLICATION_MODE: master
+      BACKEND_CORS_ORIGINS: "*"
+      DATABASE_USERNAME: stocks
+      DATABASE_PASSWORD: gibberish
+      DATABASE_HOST: database
+      DATABASE_PORT: 5005
+      DATABASE_NAME: 0
+      ENVIRONMENT: docker
+      PROJECT_NAME: "Stocks"
+      PYTHONPATH: /application
+      APP_CFG: '{"SOCKET_CONNECTIONS": [{"url_slug": "dxfeed", "source_type": "dxfeed", "HOST": "stocks_binance", "PORT": 1234}, {"url_slug": "dxfeed", "source_type": "mc_fix", "HOST": "stocks_binance", "PORT": 4321}]}'
     volumes:
-      - ./volumes/redis:/var/lib/redis
-      - ./volumes/redis/redis.conf:/usr/local/etc/redis/redis.conf
+      - ./:/application
+      - /application/.venv
+    working_dir: /application
 
 
-#  stocks_binance:
-#    image: "python:3.9"
-#    command: bash -c "ls -la;
-##      rm -rf .venv/
-##      && ls -la
-#      && python3 -m pip install poetry
-#      && poetry config virtualenvs.create false
-#      && poetry config --list
-#      && poetry install --no-interaction --no-ansi
-#      && python3 app/core/sockets/binance_listener.py"
-#    depends_on:
-#      - database
-#    ports:
-#      - "1234:1234"
-#      - "4321:4321"
-#    networks:
-#      - stocks_network
-#    environment:
-#      BACKEND_CORS_ORIGINS: "*"
-#      DATABASE_USERNAME: stocks
-#      DATABASE_PASSWORD: gibberish
-#      DATABASE_HOST: database
-#      DATABASE_PORT: 5005
-#      DATABASE_NAME: 0
-#      ENVIRONMENT: docker
-#      PROJECT_NAME: "Stocks"
-#      PYTHONPATH: /application
-#      APP_CFG: '{"SOCKET_CONNECTIONS": [{"url_slug": "dxfeed", "source_type": "dxfeed", "HOST": "stocks_binance", "PORT": 1234}, {"url_slug": "dxfeed", "source_type": "mc_fix", "HOST": "stocks_binance", "PORT": 4321}]}'
-#    volumes:
-#      - ./:/application
-#    working_dir: /application
-#
-#
-#  stocks_client:
-#    image: "python:3.9"
-#    command: bash -c "ls -la;
-##      rm -rf .venv/
-##      && ls -la
-#      && python3 -m pip install poetry
-#      && poetry config virtualenvs.create false
-#      && poetry config --list
-#      && poetry install --no-interaction --no-ansi
-#      && python3 app/core/sockets/stocks_client.py"
-#    depends_on:
-#      - database
-#      - stocks_binance
-#    networks:
-#      - stocks_network
-#    environment:
-#      BACKEND_CORS_ORIGINS: "*"
-#      DATABASE_USERNAME: stocks
-#      DATABASE_PASSWORD: gibberish
-#      DATABASE_HOST: database
-#      DATABASE_PORT: 5005
-#      DATABASE_NAME: 0
-#      ENVIRONMENT: docker
-#      PROJECT_NAME: "Stocks"
-#      PYTHONPATH: /application
-#      APP_CFG: '{"SOCKET_CONNECTIONS": [{"url_slug": "dxfeed", "source_type": "dxfeed", "HOST": "stocks_binance", "PORT": 1234}, {"url_slug": "dxfeed", "source_type": "mc_fix", "HOST": "stocks_binance", "PORT": 4321}]}'
-#    volumes:
-#      - ./:/application
-#    working_dir: /application
-#
-#
-#  stocks_api:
-#    image: "tiangolo/uvicorn-gunicorn-fastapi:python3.9"
-#    command: bash -c "ls -la;
-##      rm -rf .venv/
-##      && ls -la
-#      && python3 -m pip install poetry
-#      && poetry config virtualenvs.create false
-#      && poetry config --list
-#      && poetry install --no-interaction --no-ansi
-#      && gunicorn app.api.main:app
-#      -w 4 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000"
-#    depends_on:
-#      - database
-#      - stocks_binance
-#      - stocks_client
-#    ports:
-#      - "8000:8000"
-#    networks:
-#      - stocks_network
-#    environment:
-#      BACKEND_CORS_ORIGINS: "*"
-#      DATABASE_USERNAME: stocks
-#      DATABASE_PASSWORD: gibberish
-#      DATABASE_HOST: database
-#      DATABASE_PORT: 5005
-#      DATABASE_NAME: 0
-#      ENVIRONMENT: docker
-#      PROJECT_NAME: "Stocks"
-#    volumes:
-#      - ./:/app
-#
-#
-#  grafana:
-#    image: "grafana/grafana:latest"
-#    command: "grafana-cli plugins install grafana-simple-json-datasource
-#      && service grafana-server restart"
-#    depends_on:
-#      - database
-#      - stocks_binance
-#      - stocks_client
-#      - stocks_api
-#    ports:
-#      - "3333:3333"
-#    networks:
-#      - stocks_network
-#    environment:
-#      GF_SERVER_HTTP_PORT: 3333
-#      GF_INSTALL_PLUGINS: grafana-simple-json-datasource
-#    volumes:
-#      - ./volumes/grafana:/var/lib/grafana
+  stocks_api:
+    image: "tiangolo/uvicorn-gunicorn-fastapi:python3.9"
+    command: bash -c "ls -la;
+      python3 -m pip install poetry
+      && poetry config virtualenvs.create false
+      && poetry config --list
+      && poetry install --no-interaction --no-ansi
+      && uvicorn app.api.main:app --host 0.0.0.0 --port 8000"
+    depends_on:
+      - stocks_binance
+    ports:
+      - "8000:8000"
+    networks:
+      - stocks_network
+    environment:
+      BACKEND_CORS_ORIGINS: "*"
+      DATABASE_USERNAME: stocks
+      DATABASE_PASSWORD: gibberish
+      DATABASE_HOST: database
+      DATABASE_PORT: 5005
+      DATABASE_NAME: 0
+      ENVIRONMENT: docker
+      PROJECT_NAME: "Stocks"
+      APP_CFG: '{"SOCKET_CONNECTIONS": [{"url_slug": "dxfeed", "source_type": "dxfeed", "HOST": "stocks_binance", "PORT": 1234}, {"url_slug": "dxfeed", "source_type": "mc_fix", "HOST": "stocks_binance", "PORT": 4321}]}'
+    volumes:
+      - ./:/app
+      - /app/.venv
+
+
+  grafana:
+    image: "grafana/grafana:latest"
+    command: "grafana-cli plugins install grafana-simple-json-datasource
+      && service grafana-server restart"
+    depends_on:
+      - stocks_binance
+      - stocks_api
+    ports:
+      - "3333:3333"
+    networks:
+      - stocks_network
+    environment:
+      GF_SERVER_HTTP_PORT: 3333
+      GF_INSTALL_PLUGINS: grafana-simple-json-datasource
+    volumes:
+      - ./volumes/grafana:/var/lib/grafana
 
 networks:
   stocks_network:

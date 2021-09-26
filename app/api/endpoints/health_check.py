@@ -2,7 +2,7 @@ from aioredis import Redis
 from fastapi import APIRouter
 from fastapi import Depends
 
-from app.api.dependencies import get_redis
+from app.core.utils.redis_dependency import get_redis
 from app.schemas.health_check import HealthCheck
 
 router = APIRouter()

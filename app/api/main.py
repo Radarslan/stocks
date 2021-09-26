@@ -1,14 +1,19 @@
+import asyncio
 import logging
+import uvloop
 
 import uvicorn  # type: ignore
 from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import JSONResponse
 
+import signal
+
 from app.api.api import api_router
 from app.core.settings.settings import API_VERSION
 from app.core.settings.settings import BACKEND_CORS_ORIGINS
 from app.core.settings.settings import PROJECT_NAME
+from app.core.sockets.stocks_client import StocksClient
 
 
 def get_application() -> FastAPI:
@@ -38,6 +43,23 @@ def init_middlewares(application: FastAPI) -> None:
 
 
 app = get_application()
+app.stocks_client = StocksClient()
+
+
+@app.on_event("startup")
+async def startup_event() -> None:
+    logging.info("adding signal handlers")
+    signal.signal(signal.SIGINT, app.stocks_client.signal_handler)
+    signal.signal(signal.SIGTERM, app.stocks_client.signal_handler)
+    asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+    logging.info("starting stocks client")
+    asyncio.create_task(app.stocks_client.main_loop())
+
+
+@app.on_event("shutdown")
+def shutdown_event():
+    logging.info("closing")
+    app.stocks_client.received_sigterm = True
 
 
 @app.exception_handler(Exception)
@@ -53,5 +75,4 @@ async def validation_exception_handler(request, err):
 
 
 if __name__ == "__main__":
-
     uvicorn.run(app=app, host="127.0.0.1", port=8000, log_level="info")

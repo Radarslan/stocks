@@ -37,6 +37,7 @@ logging.basicConfig(
 
 # time periods
 HALF_AN_HOUR = 1800
+FIVE_MINUTES = 300
 
 # database
 DATABASE_PASSWORD: str = config("DATABASE_PASSWORD", "gibberish")

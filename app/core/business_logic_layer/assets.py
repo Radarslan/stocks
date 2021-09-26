@@ -2,21 +2,20 @@ from decimal import Decimal
 from typing import Any
 from typing import Optional
 
-from aioredis import Redis
 
-from app.crud.base import get_all_keys
-from app.crud.base import get_all_sources
-from app.crud.base import read_data_from_redis_list
+from app.crud.in_memory_base import get_all_keys
+from app.crud.in_memory_base import get_all_sources
+from app.crud.in_memory_base import read_data_from_list
 from app.schemas.grafana.datapoints import Datapoint
 
 
-async def get_timeserie_datapoints(
-        redis: Redis, key: str
-) -> Optional[Datapoint]:
+def get_timeserie_datapoints(key: str) -> Optional[Datapoint]:
     if key.find(":") == -1:
         pass
     else:
-        asset_quotes = await read_data_from_redis_list(redis, key)
+        source = key.split(":")[0]
+        asset = key.split(":")[1]
+        asset_quotes = read_data_from_list(source, asset)
         if asset_quotes:
             return Datapoint(
                 target=key,
@@ -28,10 +27,10 @@ async def get_timeserie_datapoints(
         return Datapoint(target=key, datapoints=[[]])
 
 
-async def get_table_rows(redis: Redis, target: str) -> Optional[Any]:
+def get_table_rows(target: str) -> Optional[Any]:
     if target.find(":") == -1:
 
-        all_keys = await get_all_keys(redis)
+        all_keys = get_all_keys()
         result = {
             source: [
                 {
@@ -51,17 +50,17 @@ async def get_table_rows(redis: Redis, target: str) -> Optional[Any]:
             for source in get_all_sources(all_keys)
         }
         for key in all_keys:
-            asset_quotes = await read_data_from_redis_list(redis, key)
+            source = key.split(":")[0]
+            asset = key.split(":")[1]
+            asset_quotes = read_data_from_list(source, asset)
             if asset_quotes:
-                source = key.split(":")[0]
-                asset = key.split(":")[1]
                 messages_for_30_minutes = len(asset_quotes)
-                the_1st_timestamp = int(asset_quotes[-1].get("timestamp", "0"))
+                the_1st_timestamp = asset_quotes[-1].timestamp
                 number_of_messages = 0
                 five_minutes_in_milliseconds = 5 * 60 * 1000
                 for i in range(len(asset_quotes) - 1, -1, -1):
                     if (
-                            int(asset_quotes[i].get("timestamp", "0")) - the_1st_timestamp
+                            asset_quotes[i].timestamp - the_1st_timestamp
                             >= five_minutes_in_milliseconds
                     ):
                         break

@@ -24,10 +24,10 @@ async def main():
                 binance_data = await client.recv()
                 binance_data = json.loads(binance_data)
                 binance_data = binance_data.get("data", [])
+                binance_messages = get_binance_messages(binance_data)
             except Exception as e:
                 logging.error(e)
-            else:
-                binance_messages = get_binance_messages(binance_data)
+            try:
                 for source_type in client_sockets:
                     send_message(
                         client_sockets[source_type],
@@ -38,8 +38,9 @@ async def main():
                         f"sent all messages to {source_type} "
                         f"{client_sockets[source_type]}"
                     )
-                    # logging.info(f"{binance_messages[source_type]}")
-                # break
+            except Exception as e:
+                logging.error(f"failed to send data, exiting: {e}")
+                break
 
 
 if __name__ == "__main__":
